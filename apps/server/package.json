@@ -1,0 +1,34 @@
+{
+  "name": "@factory/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Factory server: image uploads, draft audio, filesystem job queue, render watcher, review API. See blueprint.md parts B, C, E.",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "start": "tsx --env-file-if-exists=.env src/index.ts",
+    "worker:draft": "tsx --env-file-if-exists=.env src/worker-draft.ts",
+    "token": "node scripts/get-refresh-token.mjs",
+    "bundle": "node --env-file-if-exists=.env scripts/build-render-bundle.mjs"
+  },
+  "dependencies": {
+    "@factory/composition": "0.1.0",
+    "@remotion/bundler": "4.0.245",
+    "@remotion/renderer": "^4.0.245",
+    "chokidar": "3.6.0",
+    "cors": "2.8.5",
+    "express": "4.19.2",
+    "googleapis": "144.0.0",
+    "msedge-tts": "2.0.7",
+    "multer": "^2.2.0",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/cors": "2.8.17",
+    "@types/express": "4.17.21",
+    "@types/multer": "1.4.11",
+    "@types/node": "20.14.10",
+    "tsx": "4.19.2",
+    "typescript": "5.5.4"
+  }
+}

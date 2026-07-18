@@ -1,0 +1,221 @@
+# Cell 1: Install dependencies
+!pip install -q omnivoice gradio
+!pip install -q torchaudio --extra-index-url https://download.pytorch.org/whl/cu128
+     
+
+     import torch
+import torchaudio
+import gradio as gr
+import tempfile
+from omnivoice import OmniVoice
+
+device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+dtype  = torch.float16 if torch.cuda.is_available() else torch.float32
+print(f'Device: {device}')
+if torch.cuda.is_available():
+    print(f'GPU: {torch.cuda.get_device_name(0)} ({torch.cuda.get_device_properties(0).total_memory/1e9:.1f} GB)')
+
+print('Loading OmniVoice model (first time downloads ~3-5 GB)...')
+model = OmniVoice.from_pretrained('k2-fsa/OmniVoice', device_map=device, dtype=dtype)
+print('Model loaded!')
+     
+
+     
+NONVERBAL_TAGS = [
+    '[laughter]', '[sigh]', '[sniff]',
+    '[question-en]', '[surprise-ah]', '[dissatisfaction-hnn]', '[confirmation-en]',
+]
+
+DESIGN_PRESETS = {
+    'Custom (type your own)': '',
+    'Female, British accent': 'female, british accent',
+    'Male, American accent': 'male, american accent',
+    'Female, high pitch, young': 'female, high pitch, young adult',
+    'Male, deep, elderly': 'male, very low pitch, elderly',
+    'Female, whisper': 'female, whisper',
+    'Male, Australian accent': 'male, australian accent',
+    'Female, Indian accent': 'female, indian accent',
+    'Male, fast, energetic': 'male, high pitch, young adult',
+}
+
+EXAMPLE_TEXTS = [
+    'Hello! OmniVoice supports over 600 languages with state-of-the-art voice cloning.',
+    '[laughter] You really got me. I did not see that coming at all.',
+    'Breaking news: scientists have made a remarkable discovery in the field of artificial intelligence.',
+    'Welcome to our podcast. Today we are diving deep into the world of open source AI.',
+    'The quick brown fox jumps over the lazy dog. How vexingly quick daft zebras jump!',
+]
+
+def generate(text, mode, ref_audio, ref_text, design_preset, custom_instruct, num_steps, speed):
+    if not text.strip():
+        return None, 'Please enter some text.'
+    try:
+        kwargs = dict(
+            text=text,
+            num_step=int(num_steps),
+            speed=float(speed),
+        )
+        if mode == 'Voice Cloning':
+            if ref_audio is None:
+                return None, 'Please upload a reference audio file for voice cloning.'
+            kwargs['ref_audio'] = ref_audio
+            if ref_text.strip():
+                kwargs['ref_text'] = ref_text
+            # omit ref_text to let Whisper auto-transcribe
+        elif mode == 'Voice Design':
+            instruct = custom_instruct.strip() if design_preset == 'Custom (type your own)' else DESIGN_PRESETS[design_preset]
+            if not instruct:
+                return None, 'Please enter a voice design instruction.'
+            kwargs['instruct'] = instruct
+        # else Auto Voice — no extra kwargs
+
+        audio = model.generate(**kwargs)
+        tmp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+        import torch
+        audio_tensor = audio[0] if isinstance(audio[0], torch.Tensor) else torch.tensor(audio[0])
+        if audio_tensor.dim() == 1:
+           audio_tensor = audio_tensor.unsqueeze(0)
+        torchaudio.save(tmp.name, audio_tensor.cpu(), 24000)
+        duration = audio[0].shape[-1] / 24000
+        return tmp.name, f'Generated {duration:.1f}s | Mode: {mode} | Steps: {num_steps}'
+    except Exception as e:
+        return None, f'Error: {e}'
+
+def update_mode(mode):
+    return (
+        gr.update(visible=mode == 'Voice Cloning'),   # ref_audio
+        gr.update(visible=mode == 'Voice Cloning'),   # ref_text
+        gr.update(visible=mode == 'Voice Design'),    # design_preset
+        gr.update(visible=mode == 'Voice Design'),    # custom_instruct
+    )
+
+def update_preset(preset):
+    return gr.update(visible=preset == 'Custom (type your own)')
+
+def insert_tag(text, tag):
+    return text + ' ' + tag
+
+css = '''
+#header { text-align: center; padding: 16px 0 8px; }
+#header h1 { font-size: 2.2em; margin-bottom: 4px; }
+#header p { color: #888; }
+.gen-btn { background: linear-gradient(135deg, #059669, #2563eb) !important; color: white !important; font-size: 1.05em !important; }
+'''
+
+with gr.Blocks(
+    title='OmniVoice'
+) as demo:
+
+    gr.HTML("OmniVoiceVoice Cloning · Voice Design · 600+ Languages · 40x faster than real-time")
+
+    with gr.Row():
+        with gr.Column(scale=3):
+
+            text_input = gr.Textbox(
+                label='Text to speak',
+                placeholder='Enter text here...',
+                lines=4
+            )
+
+            gr.Markdown('**Non-verbal tags:**')
+            with gr.Row():
+                for tag in NONVERBAL_TAGS:
+                    b = gr.Button(tag, size='sm')
+                    b.click(fn=insert_tag, inputs=[text_input, gr.State(tag)], outputs=text_input)
+
+            mode_radio = gr.Radio(
+                choices=['Auto Voice', 'Voice Cloning', 'Voice Design'],
+                value='Auto Voice',
+                label='Generation mode'
+            )
+
+            # Voice Cloning inputs
+            ref_audio = gr.Audio(
+                label='Reference audio (upload any clear speech clip)',
+                type='filepath',
+                visible=False
+            )
+            ref_text = gr.Textbox(
+                label='Reference transcript (optional — leave blank for auto-transcription)',
+                placeholder='What is said in the reference audio...',
+                visible=False
+            )
+
+            # Voice Design inputs
+            design_preset = gr.Dropdown(
+                choices=list(DESIGN_PRESETS.keys()),
+                value='Female, British accent',
+                label='Voice style preset',
+                visible=False
+            )
+            custom_instruct = gr.Textbox(
+                label='Custom voice instruction',
+                placeholder='e.g. female, high pitch, australian accent, whisper',
+                visible=False
+            )
+
+            mode_radio.change(
+                fn=update_mode,
+                inputs=mode_radio,
+                outputs=[ref_audio, ref_text, design_preset, custom_instruct]
+            )
+            design_preset.change(
+                fn=update_preset,
+                inputs=design_preset,
+                outputs=custom_instruct
+            )
+
+            with gr.Row():
+                steps_sl = gr.Slider(minimum=8, maximum=64, value=32, step=8, label='Diffusion steps (more = better quality, slower)')
+                speed_sl = gr.Slider(minimum=0.5, maximum=2.0, value=1.0, step=0.1, label='Speed')
+
+            gen_btn  = gr.Button('Generate Speech', elem_classes='gen-btn', variant='primary')
+            status_md = gr.Markdown('')
+
+        with gr.Column(scale=2):
+            audio_out = gr.Audio(label='Output Audio', type='filepath', interactive=False)
+
+            gr.Markdown('### Mode guide')
+            gr.Markdown(
+                '**Auto Voice** — model picks a random voice\n\n'
+                '**Voice Cloning** — upload any audio clip, model clones that voice\n'
+                '- ref_text optional: leave blank and Whisper auto-transcribes\n\n'
+                '**Voice Design** — describe the voice in text:\n'
+                '- Gender: `male` / `female`\n'
+                '- Age: `child`, `young adult`, `middle-aged`, `elderly`\n'
+                '- Pitch: `very low` / `low` / `moderate` / `high` / `very high`\n'
+                '- Style: `whisper`\n'
+                '- Accent: `british`, `american`, `australian`, `indian`, etc.\n\n'
+                '> Use 16 steps for quick drafts, 32 for final output.'
+            )
+
+    gr.Markdown('### Example texts')
+    gr.Examples(
+        examples=[[t, 'Auto Voice', None, '', 'Female, British accent', '', 32, 1.0] for t in EXAMPLE_TEXTS],
+        inputs=[text_input, mode_radio, ref_audio, ref_text, design_preset, custom_instruct, steps_sl, speed_sl],
+    )
+
+    gr.HTML("GitHub · Apache-2.0 · by k2-fsa")
+
+    gen_btn.click(
+        fn=generate,
+        inputs=[text_input, mode_radio, ref_audio, ref_text, design_preset, custom_instruct, steps_sl, speed_sl],
+        outputs=[audio_out, status_md]
+    )
+
+demo.launch(share=True, debug=True, theme=gr.themes.Soft(primary_hue='emerald', secondary_hue='blue'), css=css)
+     
+
+     Colab notebook detected. This cell will run indefinitely so that you can see errors and logs. To turn off, set debug=False in launch().
+* Running on public URL: https://f0fdabe1a0205e7ee4.gradio.live
+
+This share link is temporary and will last for up to 1 week (best effort). For free permanent hosting and GPU upgrades, run `gradio deploy` from the terminal in the working directory to deploy to Hugging Face Spaces (https://huggingface.co/spaces)
+
+/usr/local/lib/python3.12/dist-packages/gradio/routes.py:1379: StarletteDeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
+  return await queue_join_helper(body, request, username)
+/usr/local/lib/python3.12/dist-packages/gradio/routes.py:1379: StarletteDeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
+  return await queue_join_helper(body, request, username)
+Downloading (incomplete total...):  37%
+ 608M/1.62G [00:32<00:27, 36.6MB/s]
+Fetching 13 files:   8%
+ 1/13 [00:00<00:01,  8.55it/s]

@@ -1,0 +1,69 @@
+{
+  "id": "amma-crisis",
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "totalFrames": 2237,
+  "brand": {
+    "kicker": "சினிமா",
+    "date": "06.07.2026",
+    "logo": "logo-h.jpeg",
+    "name": "THE HARDLINE"
+  },
+  "scenes": [
+    {
+      "id": "s1_hook",
+      "image": "amma1.jpg",
+      "caption": "மலையாள சினிமாவில்\nபாஜகவின் ஆதிக்கமா?",
+      "stat": null,
+      "audio": "audio/amma-crisis/s1_hook.wav",
+      "from": 0,
+      "durationInFrames": 239
+    },
+    {
+      "id": "s2_president",
+      "image": "amma3.png",
+      "caption": "'அம்மா'வின் முதல் பெண் தலைவர்",
+      "stat": null,
+      "audio": "audio/amma-crisis/s2_president.wav",
+      "from": 239,
+      "durationInFrames": 514
+    },
+    {
+      "id": "s3_complaints",
+      "image": "amma1.jpg",
+      "caption": "மூத்த நடிகைகளின் புகார்",
+      "stat": null,
+      "audio": "audio/amma-crisis/s3_complaints.wav",
+      "from": 753,
+      "durationInFrames": 426
+    },
+    {
+      "id": "s4_attack",
+      "image": "amma4.jpg",
+      "caption": "'ஜிகாதி' என்று\nமதரீதியான தாக்குதல்",
+      "stat": null,
+      "audio": "audio/amma-crisis/s4_attack.wav",
+      "from": 1179,
+      "durationInFrames": 356
+    },
+    {
+      "id": "s5_resign",
+      "image": "amma1.jpg",
+      "caption": "மிரட்டல்; பின் ராஜினாமா",
+      "stat": null,
+      "audio": "audio/amma-crisis/s5_resign.wav",
+      "from": 1535,
+      "durationInFrames": 471
+    },
+    {
+      "id": "s6_outro",
+      "image": "amma2.jpg",
+      "caption": "முழு செய்தி\nthehardline.in",
+      "stat": null,
+      "audio": "audio/amma-crisis/s6_outro.wav",
+      "from": 2006,
+      "durationInFrames": 231
+    }
+  ]
+}

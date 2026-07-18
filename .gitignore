@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# build output
+dist/
+build/
+out/
+apps/web/dist/
+
+# render + generated artifacts
+renders/
+apps/server/storage/
+apps/server/queue/
+
+# remotion
+.remotion/
+
+# logs / env
+*.log
+npm-debug.log*
+.env
+.env.local
+.DS_Store
+
+# google oauth client secrets — never commit
+client_secret_*.json
+**/client_secret_*.json
+
+# render bundle artifact (rebuilt via `npm run bundle`)
+render-bundle.zip
+**/render-bundle.zip
+
+# large POC media (kept locally, not versioned)
+poc/node_modules/
+poc/out/
+poc/renders/
+poc/public/audio/
+poc/*.zip

@@ -1,0 +1,25 @@
+# Self-host the factory server (UI + API + queue + CPU render) on one box.
+# Voice cloning needs a GPU and is NOT in this compose — see docs/DEPLOY.md.
+services:
+  factory:
+    build: .
+    ports:
+      - "4000:4000"
+    volumes:
+      - factory-data:/data # persists storage/ + queue/ across restarts
+    environment:
+      - QUEUE_BACKEND=local
+      # --- opt-in hardening (set before exposing publicly) ---
+      # - API_TOKEN=change-me-to-a-long-random-string
+      # - CORS_ORIGIN=https://reels.example.com
+      # - RETENTION_DAYS=14
+      # --- keep the Google Drive queue instead of local (Colab voice+render) ---
+      # - QUEUE_BACKEND=gdrive
+      # - GOOGLE_CLIENT_ID=
+      # - GOOGLE_CLIENT_SECRET=
+      # - GOOGLE_REFRESH_TOKEN=
+      # - DRIVE_ROOT_FOLDER_ID=
+    restart: unless-stopped
+
+volumes:
+  factory-data:

@@ -1,0 +1,12 @@
+.git
+**/node_modules
+**/dist
+apps/server/storage
+apps/server/queue
+renders
+poc
+*.log
+render-bundle.zip
+.env
+**/.env
+client_secret_*.json

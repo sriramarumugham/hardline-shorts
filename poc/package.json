@@ -1,0 +1,31 @@
+{
+  "name": "hardline-video",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "audio": "node scripts/generate-audio.mjs",
+    "audio:elevenlabs": "node scripts/generate-elevenlabs.mjs",
+    "timeline": "node scripts/build-timeline.mjs",
+    "make": "node scripts/make-video.mjs",
+    "make:all": "node scripts/make-all.mjs",
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Reel out/hardline-reel.mp4"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@remotion/cli": "4.0.245",
+    "@remotion/google-fonts": "4.0.245",
+    "msedge-tts": "2.0.7",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.245"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "typescript": "5.5.4"
+  }
+}
