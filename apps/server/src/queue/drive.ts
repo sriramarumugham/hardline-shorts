@@ -325,6 +325,23 @@ export class DriveQueue implements QueueBackend {
     else await this.drive.files.create({ requestBody: { name, parents: [jobId] }, media, fields: "id" });
   }
 
+  // Download <id>.mp4 from the job's Drive folder (whatever stage it's in) into
+  // local storage so the Review UI can serve it — even if this server never
+  // rendered it (e.g. another machine did, or the container restarted).
+  async ensureVideoLocal(id: string): Promise<string | null> {
+    for (const stage of STAGES) {
+      const jobId = await this.jobFolderId(stage, id);
+      if (!jobId) continue;
+      const fileId = await this.findChildFile(jobId, `${id}.mp4`);
+      if (!fileId) return null;
+      mkdirSync(mediaPaths.jobOutDir(id), { recursive: true });
+      const dest = join(mediaPaths.jobOutDir(id), `${id}.mp4`);
+      writeFileSync(dest, await this.downloadBuffer(fileId));
+      return dest;
+    }
+    return null;
+  }
+
   async deleteJob(stage: Stage, id: string) {
     const folderId = await this.jobFolderId(stage, id);
     if (folderId) await this.drive.files.update({ fileId: folderId, requestBody: { trashed: true } });

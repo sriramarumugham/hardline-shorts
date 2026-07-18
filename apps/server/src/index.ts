@@ -121,7 +121,14 @@ app.get("/api/jobs/:id", async (req, res) => {
   try {
     const found = await queue.find(req.params.id);
     if (!found) return res.status(404).json({ error: "not found" });
-    const outMp4 = join(mediaPaths.jobOutDir(found.job.meta.id), `${found.job.meta.id}.mp4`);
+    const id = found.job.meta.id;
+    let outMp4 = join(mediaPaths.jobOutDir(id), `${id}.mp4`);
+    // If the mp4 isn't on this box, pull it from Drive on demand (another machine
+    // may have rendered it, or the container's local storage was wiped).
+    if (!existsSync(outMp4) && queue.ensureVideoLocal) {
+      const local = await queue.ensureVideoLocal(id).catch(() => null);
+      if (local) outMp4 = local;
+    }
     res.json({
       stage: found.stage,
       meta: found.job.meta,

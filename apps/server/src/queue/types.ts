@@ -64,4 +64,8 @@ export interface QueueBackend {
 
   // Optional: permanently remove a job + its local media (used by retention).
   deleteJob?(stage: Stage, id: string): Promise<void>;
+
+  // Optional (gdrive): download <id>.mp4 from Drive into local storage so the
+  // Review UI can serve it even if this server didn't render it.
+  ensureVideoLocal?(id: string): Promise<string | null>;
 }
