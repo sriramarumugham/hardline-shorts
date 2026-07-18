@@ -57,15 +57,14 @@ export interface QueueBackend {
   readWorkerHeartbeat?(): Promise<WorkerHeartbeat | null>;
   workerColabUrl?(): string | null;
 
-  // Optional: if the worker already rendered <id>.mp4 (Colab, off the SAC-blocked
-  // laptop), download it locally and return the path so the server skips its own
-  // render. Returns null when no worker-rendered video exists.
-  fetchRenderedVideo?(id: string): Promise<string | null>;
+  // Optional (gdrive): confirm the worker rendered <id>.mp4 in Drive (returns its
+  // fileId), and stream it straight to the client — WITHOUT writing to disk.
+  getVideoFileId?(id: string): Promise<string | null>;
+  streamVideo?(
+    id: string,
+    range?: string
+  ): Promise<{ status: number; headers: Record<string, string>; stream: NodeJS.ReadableStream } | null>;
 
   // Optional: permanently remove a job + its local media (used by retention).
   deleteJob?(stage: Stage, id: string): Promise<void>;
-
-  // Optional (gdrive): download <id>.mp4 from Drive into local storage so the
-  // Review UI can serve it even if this server didn't render it.
-  ensureVideoLocal?(id: string): Promise<string | null>;
 }

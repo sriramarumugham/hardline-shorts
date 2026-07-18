@@ -255,18 +255,31 @@ export class DriveQueue implements QueueBackend {
     }
   }
 
-  // If the Colab worker already rendered <id>.mp4 into the completed job folder,
-  // download it to local storage and return the path — the server then skips its
-  // own (SAC-blocked) render and just serves this file.
-  async fetchRenderedVideo(id: string): Promise<string | null> {
-    const jobId = await this.jobFolderId("completed", id);
-    if (!jobId) return null;
-    const fileId = await this.findChildFile(jobId, `${id}.mp4`);
+  // Find the fileId of <id>.mp4 in the job's Drive folder (whatever stage it's
+  // in), or null. Used to confirm the worker rendered it — WITHOUT downloading.
+  async getVideoFileId(id: string): Promise<string | null> {
+    for (const stage of STAGES) {
+      const jobId = await this.jobFolderId(stage, id);
+      if (!jobId) continue;
+      return this.findChildFile(jobId, `${id}.mp4`);
+    }
+    return null;
+  }
+
+  // Stream <id>.mp4 straight from Drive (honouring an optional HTTP Range for
+  // seeking) so the server NEVER writes the video to disk. null if there's none.
+  async streamVideo(id: string, range?: string) {
+    const fileId = await this.getVideoFileId(id);
     if (!fileId) return null;
-    mkdirSync(mediaPaths.jobOutDir(id), { recursive: true });
-    const dest = join(mediaPaths.jobOutDir(id), `${id}.mp4`);
-    writeFileSync(dest, await this.downloadBuffer(fileId));
-    return dest;
+    const r = await this.drive.files.get(
+      { fileId, alt: "media" },
+      { responseType: "stream", headers: range ? { Range: range } : {} }
+    );
+    return {
+      status: r.status,
+      headers: r.headers as Record<string, string>,
+      stream: r.data as unknown as NodeJS.ReadableStream,
+    };
   }
 
   async move(id: string, from: Stage, to: Stage, patch: Partial<JobMeta> = {}): Promise<Job> {
@@ -323,23 +336,6 @@ export class DriveQueue implements QueueBackend {
     const media = { mimeType: "video/mp4", body: createReadStream(localMp4Path) };
     if (existing) await this.drive.files.update({ fileId: existing, media });
     else await this.drive.files.create({ requestBody: { name, parents: [jobId] }, media, fields: "id" });
-  }
-
-  // Download <id>.mp4 from the job's Drive folder (whatever stage it's in) into
-  // local storage so the Review UI can serve it — even if this server never
-  // rendered it (e.g. another machine did, or the container restarted).
-  async ensureVideoLocal(id: string): Promise<string | null> {
-    for (const stage of STAGES) {
-      const jobId = await this.jobFolderId(stage, id);
-      if (!jobId) continue;
-      const fileId = await this.findChildFile(jobId, `${id}.mp4`);
-      if (!fileId) return null;
-      mkdirSync(mediaPaths.jobOutDir(id), { recursive: true });
-      const dest = join(mediaPaths.jobOutDir(id), `${id}.mp4`);
-      writeFileSync(dest, await this.downloadBuffer(fileId));
-      return dest;
-    }
-    return null;
   }
 
   async deleteJob(stage: Stage, id: string) {

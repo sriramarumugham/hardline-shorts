@@ -58,19 +58,18 @@ function toAbsolute(spec: Spec): Spec {
 }
 
 export async function renderJob(id: string): Promise<string> {
-  // Preferred path: the worker (Colab, off the SAC-blocked laptop) already
-  // rendered the mp4. Collect it and skip the local render entirely.
-  if (queue.fetchRenderedVideo) {
-    const local = await queue.fetchRenderedVideo(id);
-    if (local) {
+  // Preferred path: the worker (Colab) already rendered the mp4 into Drive. Just
+  // confirm it's there and move the job to generated — the video is STREAMED from
+  // Drive on demand (/api/jobs/:id/video), never downloaded to disk.
+  if (queue.getVideoFileId) {
+    const fileId = await queue.getVideoFileId(id);
+    if (fileId) {
       await queue.move(id, "completed", "generated", { note: `rendered by worker ${new Date().toISOString()}` });
-      console.log(`[render] collected worker mp4: ${id}`);
-      return storageUrl(local);
+      console.log(`[render] worker mp4 ready (stream from Drive): ${id}`);
+      return `/api/jobs/${encodeURIComponent(id)}/video`;
     }
-    // gdrive: the worker produces the mp4; if it isn't here yet, the folder just
-    // synced ahead of the mp4 upload. Do NOT local-render (blocked under Smart
-    // App Control). Throw so the watcher clears this id and retries next poll,
-    // once the mp4 has synced.
+    // gdrive: the folder synced ahead of the mp4 upload. Don't local-render
+    // (SAC-blocked). Throw so the watcher retries next poll once it's synced.
     if (queue.kind === "gdrive") {
       throw new Error(`worker mp4 for "${id}" not synced yet — will retry`);
     }
