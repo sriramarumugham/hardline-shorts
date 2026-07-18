@@ -27,6 +27,11 @@ RUN npm run build:web
 # first local render, and gdrive+Colab mode never renders here at all.
 RUN cd apps/server && node -e "import('@remotion/renderer').then(m=>m.ensureBrowser()).then(()=>process.exit(0)).catch(e=>{console.error('browser prefetch skipped:',String(e));process.exit(0)})"
 
+# Ensure the Linux compositor binaries are executable — npm can drop the +x bit
+# in a Docker build, causing ffprobe/ffmpeg to spawn with EACCES (used by the
+# Draft-audio duration probe and local rendering).
+RUN find node_modules/@remotion -type d -name "compositor-*" -exec sh -c 'chmod +x "$1"/ffprobe "$1"/ffmpeg "$1"/remotion 2>/dev/null || true' _ {} \;
+
 ENV NODE_ENV=production \
     PORT=4000 \
     HOST=0.0.0.0 \
